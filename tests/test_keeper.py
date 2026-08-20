@@ -90,6 +90,41 @@ class DecisionTests(unittest.TestCase):
         decision = self.monitor.decide([], activities, self.now, True, False)
         self.assertEqual(decision, Decision.RECENT_ACTIVITY)
 
+    def test_manually_loaded_other_model_gets_full_idle_timeout(self):
+        self.monitor.started_at = self.now - timedelta(seconds=1000)
+        old_activity = [{"model": "other", "timestamp": (self.now - timedelta(seconds=500)).isoformat()}]
+        running = [{"model": "other", "state": "ready"}]
+
+        self.assertEqual(
+            self.monitor.decide(running, old_activity, self.now, True, False),
+            Decision.RECENT_ACTIVITY,
+        )
+        self.assertEqual(
+            self.monitor.decide(running, old_activity, self.now + timedelta(seconds=239), True, False),
+            Decision.RECENT_ACTIVITY,
+        )
+        self.assertEqual(
+            self.monitor.decide(running, old_activity, self.now + timedelta(seconds=241), True, False),
+            Decision.LOAD,
+        )
+
+    def test_same_manual_model_gets_new_timeout_after_target_ran(self):
+        self.monitor.started_at = self.now - timedelta(seconds=1000)
+        old_activity = [{"model": "other", "timestamp": (self.now - timedelta(seconds=500)).isoformat()}]
+        other = [{"model": "other", "state": "ready"}]
+
+        self.monitor.decide(other, old_activity, self.now, True, False)
+        self.monitor.decide(
+            [{"model": "gemma", "state": "ready"}],
+            old_activity,
+            self.now + timedelta(seconds=241),
+            True,
+            False,
+        )
+        decision = self.monitor.decide(other, old_activity, self.now + timedelta(seconds=300), True, False)
+
+        self.assertEqual(decision, Decision.RECENT_ACTIVITY)
+
     def test_ignores_target_activity_when_looking_for_other_models(self):
         activities = [
             {"model": "gemma", "timestamp": (self.now - timedelta(seconds=10)).isoformat()},

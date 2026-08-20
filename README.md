@@ -23,6 +23,7 @@ configuration or storing any state.
 
 - Loads a preferred model after a configurable idle period
 - Does nothing while the preferred model is already running
+- Starts a fresh idle window when any non-preferred model is loaded manually
 - Tracks llama-swap's SSE in-flight events to protect active requests
 - Supports HTTP, HTTPS, optional Bearer API keys, and custom TLS verification
 - Configuration exclusively through environment variables
@@ -93,7 +94,7 @@ A bare number is interpreted as seconds.
 |---|:---:|---|---|
 | `LLAMA_SWAP_MODEL` | Yes | — | Exact llama-swap model ID to keep warm. |
 | `LLAMA_SWAP_URL` | No | `http://localhost:8080` | Base URL of the llama-swap API, without a trailing slash. |
-| `IDLE_TIMEOUT` | No | `4m` | Time since the latest completed request to a different model before loading the preferred model. If no activity exists, the timer starts when the keeper starts. |
+| `IDLE_TIMEOUT` | No | `4m` | Time since the latest completed request to a different model or since a different model was detected as loaded. If neither exists, the timer starts when the keeper starts. |
 | `POLL_INTERVAL` | No | `15s` | Interval between running-model and activity checks. |
 | `REQUEST_TIMEOUT` | No | `30s` | Timeout for normal llama-swap API requests. |
 | `LOAD_TIMEOUT` | No | `15m` | Timeout for the model-load request. Model startup can take much longer than a normal API call. |
@@ -111,7 +112,8 @@ Boolean values accept `true`/`false`, `yes`/`no`, `on`/`off`, or `1`/`0`.
 On each check, llama-swap-keeper:
 
 1. Reads `/running` and stops if the preferred model is already starting or
-   ready.
+   ready. When a different running-model set is observed, that load time starts
+   a fresh idle window—even if no inference request was made.
 2. Uses the `/api/events` stream to maintain an in-memory view of in-flight
    requests. If the stream is unavailable or another model is busy, it fails
    safe and does not initiate a swap.

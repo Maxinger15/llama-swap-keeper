@@ -208,6 +208,8 @@ class Monitor:
         if not config.track_inflight:
             self.tracker.ready = True
         self.started_at = datetime.now(timezone.utc)
+        self._running_other_models: frozenset[str] = frozenset()
+        self._running_other_models_since: datetime | None = None
         self._last_decision: Decision | None = None
 
     def decide(
@@ -219,7 +221,19 @@ class Monitor:
         has_other_inflight: bool,
     ) -> Decision:
         if any(item.get("model") == self.config.model and item.get("state") != "stopped" for item in running):
+            self._running_other_models = frozenset()
+            self._running_other_models_since = None
             return Decision.TARGET_RUNNING
+
+        running_other_models = frozenset(
+            str(item["model"])
+            for item in running
+            if item.get("model") and item.get("model") != self.config.model and item.get("state") != "stopped"
+        )
+        if running_other_models != self._running_other_models:
+            self._running_other_models = running_other_models
+            self._running_other_models_since = now if running_other_models else None
+
         if self.config.track_inflight and not inflight_ready:
             return Decision.INFLIGHT_UNKNOWN
         if has_other_inflight:
@@ -239,6 +253,8 @@ class Monitor:
                 latest_other = parsed
 
         idle_since = latest_other or self.started_at
+        if self._running_other_models_since is not None:
+            idle_since = max(idle_since, self._running_other_models_since)
         if (now - idle_since).total_seconds() < self.config.idle_timeout:
             return Decision.RECENT_ACTIVITY
         return Decision.LOAD
