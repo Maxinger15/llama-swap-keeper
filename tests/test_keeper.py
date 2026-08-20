@@ -108,6 +108,20 @@ class DecisionTests(unittest.TestCase):
             Decision.LOAD,
         )
 
+    def test_removing_one_of_multiple_manual_models_does_not_reset_timeout(self):
+        self.monitor.started_at = self.now - timedelta(seconds=1000)
+        old_activity = [{"model": "other-a", "timestamp": (self.now - timedelta(seconds=500)).isoformat()}]
+        both = [
+            {"model": "other-a", "state": "ready"},
+            {"model": "other-b", "state": "ready"},
+        ]
+        one = [{"model": "other-a", "state": "ready"}]
+
+        self.monitor.decide(both, old_activity, self.now, True, False)
+        decision = self.monitor.decide(one, old_activity, self.now + timedelta(seconds=241), True, False)
+
+        self.assertEqual(decision, Decision.LOAD)
+
     def test_same_manual_model_gets_new_timeout_after_target_ran(self):
         self.monitor.started_at = self.now - timedelta(seconds=1000)
         old_activity = [{"model": "other", "timestamp": (self.now - timedelta(seconds=500)).isoformat()}]

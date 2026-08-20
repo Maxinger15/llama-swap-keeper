@@ -231,8 +231,12 @@ class Monitor:
             if item.get("model") and item.get("model") != self.config.model and item.get("state") != "stopped"
         )
         if running_other_models != self._running_other_models:
+            added_models = running_other_models - self._running_other_models
             self._running_other_models = running_other_models
-            self._running_other_models_since = now if running_other_models else None
+            if not running_other_models:
+                self._running_other_models_since = None
+            elif added_models:
+                self._running_other_models_since = now
 
         if self.config.track_inflight and not inflight_ready:
             return Decision.INFLIGHT_UNKNOWN
