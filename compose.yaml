@@ -1,0 +1,19 @@
+services:
+  llama-swap-keeper:
+    image: ghcr.io/maxinger15/llama-swap-keeper:latest
+    container_name: llama-swap-keeper
+    restart: unless-stopped
+    environment:
+      LLAMA_SWAP_URL: http://llama-swap:8080
+      LLAMA_SWAP_MODEL: gemma-4-26B-A4B-it-qat-UD-Q4_K_XL
+      IDLE_TIMEOUT: 4m
+      POLL_INTERVAL: 15s
+      TLS_VERIFY: "true"
+      # LLAMA_SWAP_API_KEY: change-me
+    networks:
+      - llama-swap
+
+networks:
+  llama-swap:
+    external: true
+    name: llama-swap

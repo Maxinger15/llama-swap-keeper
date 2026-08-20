@@ -1,0 +1,10 @@
+.git
+.github
+__pycache__
+*.py[cod]
+tests
+compose.yaml
+README.md
+LICENSE
+CONTRIBUTING.md
+SECURITY.md
